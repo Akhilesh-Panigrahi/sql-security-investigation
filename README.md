@@ -465,3 +465,11 @@ Potential future enhancements include:
 If you found this project useful, feel free to explore the other cybersecurity projects in my portfolio.
  
 **Learn → Build → Investigate → Improve**
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+See the LICENSE file for more information.
