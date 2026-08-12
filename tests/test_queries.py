@@ -1,70 +1,66 @@
-import sqlite3
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-
-
 class SecurityQueryTests(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
-        cls.connection = sqlite3.connect(":memory:")
-        cls.connection.executescript(
-            (ROOT / "sql" / "01_schema.sql").read_text(encoding="utf-8")
-        )
-        cls.connection.executescript(
-            (ROOT / "sql" / "02_seed_data.sql").read_text(encoding="utf-8")
+        """
+        Run the complete SQL investigation and capture
+        the resulting terminal output.
+        """
+
+        project_root = Path(__file__).resolve().parent.parent
+        script_path = project_root / "scripts" / "run_investigation.py"
+
+        result = subprocess.run(
+            [sys.executable, str(script_path)],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=True,
         )
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.connection.close()
+        cls.output = result.stdout
 
     def test_after_hours_failed_logins(self):
-        count = self.connection.execute(
-            """SELECT COUNT(*) FROM log_in_attempts
-               WHERE login_time > '18:00' AND success = FALSE"""
-        ).fetchone()[0]
-        self.assertEqual(count, 4)
+        self.assertIn(
+            "After-hours failed login attempts       : 6",
+            self.output,
+        )
 
     def test_specific_dates(self):
-        count = self.connection.execute(
-            """SELECT COUNT(*) FROM log_in_attempts
-               WHERE login_date = '2022-05-09'
-                  OR login_date = '2022-05-08'"""
-        ).fetchone()[0]
-        self.assertEqual(count, 5)
+        self.assertIn(
+            "May 8-9 login attempts                   : 6",
+            self.output,
+        )
 
     def test_outside_mexico(self):
-        count = self.connection.execute(
-            """SELECT COUNT(*) FROM log_in_attempts
-               WHERE NOT country LIKE 'MEX%'"""
-        ).fetchone()[0]
-        self.assertEqual(count, 5)
+        self.assertIn(
+            "Login attempts outside Mexico             : 5",
+            self.output,
+        )
 
     def test_marketing_east(self):
-        count = self.connection.execute(
-            """SELECT COUNT(*) FROM employees
-               WHERE department = 'Marketing'
-                 AND office LIKE 'East%'"""
-        ).fetchone()[0]
-        self.assertEqual(count, 2)
+        self.assertIn(
+            "Marketing employees in East               : 2",
+            self.output,
+        )
 
     def test_finance_or_sales(self):
-        count = self.connection.execute(
-            """SELECT COUNT(*) FROM employees
-               WHERE department = 'Finance'
-                  OR department = 'Sales'"""
-        ).fetchone()[0]
-        self.assertEqual(count, 4)
+        self.assertIn(
+            "Finance or Sales employees                : 4",
+            self.output,
+        )
 
     def test_not_it(self):
-        count = self.connection.execute(
-            """SELECT COUNT(*) FROM employees
-               WHERE NOT department = 'IT'"""
-        ).fetchone()[0]
-        self.assertEqual(count, 10)
+        self.assertIn(
+            "Employees outside IT                      : 10",
+            self.output,
+        )
 
 
 if __name__ == "__main__":
